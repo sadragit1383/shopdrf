@@ -148,8 +148,8 @@ REST_FRAMEWORK  = {
      'PAGE_SIZE':2 ,
      'DEFAULT_AUTHENTICATION_CLASSES':[
 
-         'rest_framework.authentication.TokenAuthentication',
-        #   'rest_framework_simplejwt.authentication.JWTAuthentication',
+        #  'rest_framework.authentication.TokenAuthentication',
+          'rest_framework_simplejwt.authentication.JWTAuthentication',
 
          ],
      'DEFAULT_PERMISSION_CLASSES':[
@@ -165,19 +165,19 @@ REST_FRAMEWORK  = {
 
 
 
-# from datetime import timedelta
+from datetime import timedelta
 
-# SIMPLE_JWT = {
-#     "ACCESS_TOKEN_LIFETIME": timedelta(seconds=30),
-#     "REFRESH_TOKEN_LIFETIME": timedelta(seconds=30),
-# }
+SIMPLE_JWT = {
+    "ACCESS_TOKEN_LIFETIME": timedelta(seconds=30),
+    "REFRESH_TOKEN_LIFETIME": timedelta(seconds=30),
+}
 
 
 
-# SPECTACULAR_SETTINGS = {
-#     'TITLE': 'Your Project API',
-#     'DESCRIPTION': 'Your project description',
-#     'VERSION': '1.0.0',
-#     'SERVE_INCLUDE_SCHEMA': False,
-#     # OTHER SETTINGS
-# }
+SPECTACULAR_SETTINGS = {
+    'TITLE': 'Your Project API',
+    'DESCRIPTION': 'Your project description',
+    'VERSION': '1.0.0',
+    'SERVE_INCLUDE_SCHEMA': False,
+    # OTHER SETTINGS
+}
