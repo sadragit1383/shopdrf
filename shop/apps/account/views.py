@@ -1,6 +1,7 @@
 from django.contrib.auth import authenticate, login
-from rest_framework import status, generics, permissions
+from rest_framework import status, permissions
 from rest_framework.response import Response
+from rest_framework.views import APIView
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from django.shortcuts import get_object_or_404
 import funcs  # pylint: disable=import-error
@@ -15,57 +16,76 @@ from .serializers import (
 )
 
 
-
-class CustomerUserView(generics.ListCreateAPIView):
+class CustomerUserView(APIView):
     """View for listing and creating CustomUser instances."""
-    queryset = CustomUser.objects.all()
-    serializer_class = CustomUserSerializer
     permission_classes = [permissions.IsAdminUser]
     authentication_classes = [JWTAuthentication]  # Use JWT authentication
 
-class CustomUserViewDetail(generics.RetrieveUpdateDestroyAPIView):
+    def get(self, request):
+        users = CustomUser.objects.all()
+        serializer = CustomUserSerializer(users, many=True)
+        return Response(serializer.data)
+
+    def post(self, request):
+        serializer = CustomUserSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class CustomUserViewDetail(APIView):
     """View for retrieving, updating, and deleting CustomUser instances."""
-    queryset = CustomUser.objects.all()
-    serializer_class = CustomUserSerializer
     permission_classes = [permissions.IsAuthenticated]
-    authentication_classes = [JWTAuthentication]  # Use JWT authentication
+    authentication_classes = [JWTAuthentication]
+
+    def get(self, request, pk):
+        user = get_object_or_404(CustomUser, pk=pk)
+        serializer = CustomUserSerializer(user)
+        return Response(serializer.data)
+
+    def put(self, request, pk):
+        user = get_object_or_404(CustomUser, pk=pk)
+        serializer = CustomUserSerializer(user, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def delete(self, request, pk):
+        user = get_object_or_404(CustomUser, pk=pk)
+        user.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
-
-
-class RegisterUserView(generics.CreateAPIView):
+class RegisterUserView(APIView):
     """View for registering a new CustomUser."""
-    queryset = CustomUser.objects.all()
-    serializer_class = RegisterSerializer
     permission_classes = [permissions.AllowAny]
 
-    def create(self, request, *args, **kwargs):
-        response = super().create(request, *args, **kwargs)
-        random_number = funcs.create_random_code(5)
-        try:
+    def post(self, request):
+        serializer = RegisterSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            random_number = funcs.create_random_code(5)
             user = CustomUser.objects.get(mobile_number=request.data.get('mobile_number'))
             user.set_password(request.data.get('password'))
             user.active_code = random_number
             user.save()
 
-            # Store essential info in session
             request.session['user_info'] = {
                 'mobile_number': user.mobile_number,
                 'active_code': random_number,
                 'remember_password': False,
             }
-            return response
-        except CustomUser.DoesNotExist:
-            return Response({'message': 'Registration failed. User not found.'}, status=status.HTTP_404_NOT_FOUND)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
-class RegisterActiveCode(generics.CreateAPIView):
+class RegisterActiveCode(APIView):
     """View for activating a registered user with a code."""
-    queryset = CustomUser.objects.all()
-    serializer_class = ActiveCodeSerializer
     permission_classes = [permissions.AllowAny]
 
-    def create(self, request, *args, **kwargs):
+    def post(self, request):
         user_info = request.session.get('user_info', {})
         mobile_number = user_info.get('mobile_number')
         active_code = user_info.get('active_code')
@@ -80,13 +100,11 @@ class RegisterActiveCode(generics.CreateAPIView):
         return Response({'message': 'Incorrect code entered.'}, status=status.HTTP_400_BAD_REQUEST)
 
 
-class LoginUserGeneric(generics.CreateAPIView):
+class LoginUserGeneric(APIView):
     """View for authenticating and logging in a CustomUser."""
-    queryset = CustomUser.objects.all()
-    serializer_class = LoginSerializer
     permission_classes = [permissions.AllowAny]
 
-    def create(self, request, *args, **kwargs):
+    def post(self, request):
         mobile_number = request.data.get('mobile_number')
         password = request.data.get('password')
         user = authenticate(request, username=mobile_number, password=password)
@@ -101,13 +119,11 @@ class LoginUserGeneric(generics.CreateAPIView):
         return Response({'message': 'Invalid credentials.'}, status=status.HTTP_400_BAD_REQUEST)
 
 
-class RememberPasswordGeneric(generics.CreateAPIView):
+class RememberPasswordGeneric(APIView):
     """View for handling password reset by sending an active code."""
-    queryset = CustomUser.objects.all()
-    serializer_class = RememberPasswordSerializer
     permission_classes = [permissions.AllowAny]
 
-    def create(self, request, *args, **kwargs):
+    def post(self, request):
         mobile_number = request.data.get('mobile_number')
         user = get_object_or_404(CustomUser, mobile_number=mobile_number)
 
@@ -124,13 +140,11 @@ class RememberPasswordGeneric(generics.CreateAPIView):
         return Response({'message': 'Code sent successfully.'})
 
 
-class ChangePasswordGeneric(generics.CreateAPIView):
+class ChangePasswordGeneric(APIView):
     """View for changing a CustomUser's password."""
-    queryset = CustomUser.objects.all()
-    serializer_class = ChangePasswordSerializer
     permission_classes = [permissions.AllowAny]
 
-    def create(self, request, *args, **kwargs):
+    def post(self, request):
         password = request.data.get('password')
         re_password = request.data.get('re_password')
 
